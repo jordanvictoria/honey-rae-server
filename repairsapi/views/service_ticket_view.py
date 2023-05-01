@@ -4,6 +4,7 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework import serializers, status
 from repairsapi.models import ServiceTicket, Employee, Customer
+from datetime import datetime
 
 
 class ServiceTicketView(ViewSet):
@@ -25,6 +26,13 @@ class ServiceTicketView(ViewSet):
             if "status" in request.query_params:
                 if request.query_params['status'] == "done":
                     service_tickets = service_tickets.filter(date_completed__isnull=False)
+                if request.query_params['status'] == "unclaimed":
+                    service_tickets = service_tickets.filter(date_completed__isnull=True, employee__isnull=True)
+                if request.query_params['status'] == "inprogress":
+                    service_tickets = service_tickets.filter(date_completed__isnull=True, employee__isnull=False)
+
+            if "search" in request.query_params:
+                service_tickets = service_tickets.filter(description__icontains=request.query_params['search'])
 
         else:
             service_tickets = ServiceTicket.objects.filter(customer__user=request.auth.user)
@@ -66,9 +74,12 @@ class ServiceTicketView(ViewSet):
 
         employee_id = request.data['employee']
 
+        ticket_date = request.data['date_completed']
+
         assigned_employee = Employee.objects.get(pk=employee_id)
 
         ticket.employee = assigned_employee
+        ticket.date_completed = ticket_date
 
         ticket.save()
 
@@ -102,3 +113,7 @@ class ServiceTicketSerializer(serializers.ModelSerializer):
         model = ServiceTicket
         fields = ( 'id', 'description', 'emergency', 'date_completed', 'employee', 'customer', )
         depth = 1
+
+
+
+
